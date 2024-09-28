@@ -1,0 +1,173 @@
+---
+title: "Campo Abierto - Tracking"
+subtitle: "Heatmaps y Rasters de Trayectorias"
+title-block-banner: true
+author:
+  - name: Garcia Rios Santiago
+    email: santiago_gr@ciencias.unam.mx
+    affiliations:
+      - name: Facultad de Ciencias
+        url: https://www.fciencias.unam.mx/
+format: 
+  html:
+    lang: es  # figure, note, warning, code
+    embed-resources: true # self-contained file
+    # code-fold: true # retraer código
+    # code-summary: "Mostrar código"
+    theme: "sandstone" # cyborg, quartz, slate, solar, superhero, vapor
+    code-tools: true
+    code-links:
+      - text: Ver repositorio en Github
+        icon: github
+        href: https://github.com/santi-rios/maestria_mapas_calor_labcruzr
+      - text: Ver archivo de de quarto
+        icon: r-circle-fill
+        href: https://github.com/santi-rios/maestria_mapas_calor_labcruzr/blob/main/index.qmd
+  # docx:
+  #   toc: true
+  #   number-sections: true
+  #   highlight-style: github
+  #   execute:
+  #     echo: false
+  # pdf:
+  #   toc: true
+  #   geometry:
+  #     - inner=3cm
+  #     - outer=4cm
+  #     - top=3cm
+  #     - bottom=4cm
+  #     - headsep=22pt
+  #     - headheight=11pt
+  #     - footskip=33pt
+  #     - ignorehead
+  #     - ignorefoot
+  #     - heightrounded
+date: "today"
+# editor: visual
+editor_options: 
+  chunk_output_type: console
+execute:
+  echo: true  
+  warning: false
+  cache: false
+toc: true
+number-sections: true
+# bibliography: references.bib
+---
+
+::: {.callout-tip}
+Para descargar las carpetas de github de maner fácil, se puede usar la siguiente página: [https://download-directory.github.io/(https://download-directory.github.io/)]
+:::
+
+Cargar librerías necesarias. Esta función instala las librerías necesarias si no están instaladas. 
+
+```{r}
+
+# escribir librerías necesarias
+list.of.packages <- c("Rtrack", "paletteer", "viridis", "viridisLite")
+# funcion para cargar e instalar librerías faltantes
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+# cargar librerías
+library(Rtrack) # para leer experimentos y graficar
+library(paletteer) # paletas de colores
+library(viridis) # paletas de colores
+library(viridisLite) # paletas de colores
+
+```
+
+Ahora, tenemos que leer las trayectorias de los animales y graficarlas.
+
+1. **Leer experimento** 
+
+Se necesitan dos cosas. Primero, un archivo de Excel (`.xlsx`) que contenga los siguientes campos:
+
+![imagen](./figuras/excel.jpg)
+
+`_TrackID` es el nombre del archivo de las coordenadas de cada animal.	
+`_TargetID` es el nombre arbitrario que permita identificar a cada animal.	
+`_Day`	es el día del experimento; dejar en 1 si no se tienen datos de varios días.
+`_Trial`	dejar en 1.
+`_Arena`	dejar como está para cada exprimento. 
+`_TrackFile`	nombre del archivo de las coordenadas CON la extensión .csv. El archivo excel lo hace automaticamente solo arrastrando ya que tiene la fórmula `=A2&".csv"`. 
+`_TrackFileFormat`	dejar como está. 
+`grupo` opcional, para identificar a los animales en grupos.
+
+
+Ahora, necesitamos las coordenadas exportadas de un software de tracking en una carpeta en formato `csv`. **NOTA** Dependiente de la versión de anymaze.. este tiende a poner los nombres de las columnas en formatos no consistentes. Lo mejor es abrir el archivo en excel y cambiar el nombre de las columnas a `Time`, `X` y `Y` para evitar problemas. Guardar como CSV. T debe ser segundos. 
+
+![](./figuras/coordenadas.jpg){#fig-coord}
+
+Las coordenadas en X y y deben estar en Pixeles, de la siguiente manera:
+
+![](./figuras/anymaze.jpg)
+
+Y se exportan a la carpeta así:
+
+![](./figuras/exportar.jpg)
+
+Al final, las coordenadas deben de quedar como en la @fig-coord.
+
+::: {.callout-note}
+**Cómo organizar las carpetas**
+
+El script principal (puedes copiar y pegar este archivo o descargarlo desde github) debe estar en la carpeta principal. Dentro de esta carpeta, se deben de tener una carpeta: `experimentos`. En la carpeta `experimentos`, crear subcarpetas para cada experimento que se quiera hacer el mapa de calor. Además, en la carpeta `experimentos` debe estar el archivo de texto con los parámetros del experimento (copiar y pegar de github) y el excel con los datos de los animales. Debe quedar así:
+
+![Script principal llamado index.qmd](./figuras/principal.jpg)
+
+![Organización de la Subcarpetas experimentos.](./figuras/subcarpeta.jpg)
+
+:::
+
+Esto es lo más dificil, ahora solo necesitamos correr el código y ajustar los colores:
+
+Leer el experimento deseado, donde `experimento.ee.rad.postcums` es el nombre del experimento del archivo excel y data.dir las coordenadas exportadas de dicho experimento.
+
+```{r}
+experimento.ee.rad.postcums = Rtrack::read_experiment("./experimentos/ee_sham_post.xlsx", data.dir = "./experimentos/ee_sham_post")
+
+```
+
+Ahora lo podemos graficar. Para los colores, podemos hacer dos cosas.
+
+En este código, se usa una paleta predefinida de colores del paquete viridis. Ajustar con estos nombres en el código para obtener el resultado deseado:
+
+![Ejemplos de la paleta de colores viridis](./figuras/viridis-scales.png)
+
+Cambiar el argumento `col = viridis(300)` por la paleta que se quiera. El número es la cantidad de colores en la paleta, entre más colores, más detallado el mapa de calor.
+
+```{r}
+
+Rtrack::plot_density(
+  experimento.ee.rad.postcums$metrics,
+  title = "ee_sham_post",
+  col = viridis(300),
+  resolution = 900,
+  feature.col = "#D20062",
+  feature.lwd = 4,
+  legend = TRUE
+)
+
+```
+
+
+Otra opción es especificar una paleta de colores. En este caso, se usa la paleta `colorRampPalette(c("blue", "green", "yellow"))(256)`. Cambiar los colores por los deseados.
+
+```{r}
+Rtrack::plot_density(
+  experimento.ee.rad.postcums$metrics,
+  title = "ee_sham_post",
+  colorRampPalette(c("white", "blue", "green", "yellow", "red"))(400),
+  resolution = 900,
+  feature.col = "#D20062",
+  feature.lwd = 4,
+  legend = TRUE
+)
+
+```
+::: {.callout-tip}
+Se pueden usar los colores que se quieran. En este caso, se usan los colores de la paleta `colorRampPalette(c("white", "blue", "green", "yellow", "red"))(400)`. Cambiar los colores por los deseados, donde white es el color que corresponde a la menor densidad y red a la mayor densidad. Para ajustar mejor, usar los colores `hex`. Para esto, visitar esta página: [https://htmlcolorcodes.com/es/](https://htmlcolo rcodes.com/es/) y copiar el código `hex` del color deseado de esta manera: `colorRampPalette(c("#FFFFFF", "#0000FF", "#00FF00", "#FFFF00", "#FF0000"))(400)`.
+:::
+
+Por úlitmo, se puede guardar la imagen y borrar en photoshop o photopea los elementos que no se quieran, y agregar las paredes del laberinto. Repetir para todos los experimentos deseados. 
